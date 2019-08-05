@@ -102,3 +102,12 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Pycharm
+.idea/
+
+# Secret connection info
+secret.py
+
+# input file used to define what to clone and where.
+input.py
