@@ -22,3 +22,8 @@ to create from it.
 # Customising
 This script is meant to be integrated into your own projects, so the input is strictly segregated from the output. 
 
+# Credits
+Much of the code for interacting with VMWare is borrowed and modified from snippets in the pyvmomi community samples: 
+https://github.com/vmware/pyvmomi-community-samples
+
+Additionally, this is based on some work undertaken by myself and a former colleague: https://github.com/inuwashi
