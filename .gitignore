@@ -107,7 +107,7 @@ venv.bak/
 .idea/
 
 # Secret connection info
-secret.py
+settings/secret.py
 
 # input file used to define what to clone and where.
 input.py

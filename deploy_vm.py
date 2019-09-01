@@ -1,4 +1,3 @@
-from vmware import vm
 from vmware.vsphere import VSphere
 
 
@@ -6,15 +5,14 @@ class ConfigurationError(Exception):
     pass
 
 
-def __main__():
-    vm_deployer = VMDeployer()
-    vm_deployer.deploy()
-
-class VMDeployer:
+class VMDeployer(object):
 
     def __init__(self):
         """
         Loads up the required files, checks them and clones the VM or VM Template
+
+        If you are aiming to integrate this with a larger system, start here :)
+
         :return:
         """
 
@@ -24,8 +22,9 @@ class VMDeployer:
             self.secret = self.load_secret()
             self.inputs = self.load_inputs()
         except Exception as e:
-            # todo
-            pass
+            filename = "secret" if not self.secret else "inputs"
+            print(f"Problem loading {filename}. Did you copy the same file over? Error: {str(e)}")
+            exit(1)
 
         print("Successfully loaded secret file and inputs. Validating...")
 
@@ -33,7 +32,7 @@ class VMDeployer:
             self.validate_secret()
             self.validate_inputs()
         except ConfigurationError as e:
-            print(str(e))
+            print(f"Validation Problem: {str(e)}")
             exit(1)
 
         print("Validated inputs and secrets.")
@@ -42,19 +41,20 @@ class VMDeployer:
 
         print("Connected to vSphere")
 
-        vsphere = VSphere(self.secret['uri'], self.secret['username'], self.secret['password'])
+        v_sphere = VSphere(self.secret['uri'], self.secret['username'], self.secret['password'])
 
-        print(f"Connected. Fetching template ")
+        print(f"Connected. Cloning. This may take some time...")
 
-        template = vm.get_vm_by_name(self.inputs['template_name'])
-
-        print(f"Template Found. Cloning. This may take some time...")
-
-        vsphere.clone_machine(template, self.inputs['target_vm_host'], self.inputs['new_vm_name'])
+        v_sphere.clone_machine(self.inputs['template_name'],
+                               self.inputs['target_vm_host'],
+                               self.inputs['target_datastore'],
+                               self.inputs['target_vm_folder'],
+                               self.inputs['new_vm_name'],
+                               )
 
         print("Found VM. Reconfiguring HW")
 
-        vsphere.configure_machine(self.inputs['new_vm_name'], self.inputs['vm_network'], self.inputs['new_vm_specs'])
+        v_sphere.configure_machine(self.inputs['new_vm_name'], self.inputs['vm_network'], self.inputs['new_vm_specs'])
 
         print("VM Reconfigured. Booting VM for the first time.")
 
@@ -69,7 +69,7 @@ class VMDeployer:
         :return: secret vmware connection info
         :rtype dict:
         """
-        from .secret import VMWARE_CONNECTION
+        from settings.secret import VMWARE_CONNECTION
         return VMWARE_CONNECTION
 
     def load_inputs(self):
@@ -79,7 +79,7 @@ class VMDeployer:
         :return: Inputs to determine what is going to be cloned where and with what specs.
         :rtype dict:
         """
-        from .input import INPUT
+        from input import INPUT
         return INPUT
 
     def validate_secret(self):
@@ -114,8 +114,7 @@ class VMDeployer:
         """
         try:
             key = 'template_name'
-            template_name = self.inputs['template_name']
-            assert template_name != ''
+            assert self.inputs['template_name'] != ''
 
             key = 'template_admin_account'
             template_admin_account = self.inputs['template_admin_account']
@@ -131,24 +130,22 @@ class VMDeployer:
             assert template_admin_account_password != ''
 
             key = 'template_os'
-            template_os = self.secret['template_os']
-            assert template_os != ''
+            assert self.inputs['template_os'] != ''
 
             key = 'target_vm_host'
-            target_vm_host = self.secret['target_vm_host']
-            assert target_vm_host != ''
+            assert self.inputs['target_vm_host'] != ''
+
+            key = 'target_datastore'
+            assert self.inputs['target_vm_host'] != ''
 
             key = 'target_vm_folder'
-            target_vm_folder = self.secret['target_vm_folder']
-            assert target_vm_folder != ''
+            assert self.inputs['target_vm_folder'] != ''
 
             key = 'vm_network'
-            vm_network = self.secret['vm_network']
-            assert vm_network != ''
+            assert self.inputs['vm_network'] != ''
 
             key = 'new_vm_name'
-            new_vm_name = self.secret['new_vm_name']
-            assert new_vm_name != ''
+            assert self.inputs['new_vm_name'] != ''
 
             key = 'new_vm_specs'
             new_vm_specs = self.inputs['new_vm_specs']
@@ -156,16 +153,13 @@ class VMDeployer:
             assert new_vm_specs != {}
 
             key = 'new_vm_specs: vcpus'
-            new_vm_specs_vcpus = new_vm_specs['vcpus']
-            assert isinstance(new_vm_specs_vcpus, int)
+            assert isinstance(new_vm_specs['vcpus'], int)
 
             key = 'new_vm_specs: memory'
-            new_vm_specs_memory = new_vm_specs['memory']
-            assert isinstance(new_vm_specs_memory, int)
+            assert isinstance(new_vm_specs['memory'], int)
 
             key = 'new_vm_specs: hdd'
-            new_vm_specs_hdd = new_vm_specs['hdd']
-            assert isinstance(new_vm_specs_hdd, int)
+            assert isinstance(new_vm_specs['hdd'], int)
 
             key = 'new_vm_networking'
             new_vm_networking = self.inputs['new_vm_networking']
@@ -173,12 +167,15 @@ class VMDeployer:
             assert new_vm_networking != {}
 
             key = 'new_vm_networking: ip'
-            new_vm_networking_ip = new_vm_networking['ip']
-            assert new_vm_networking_ip != ''
+            assert new_vm_networking['ip'] != ''
 
             key = 'new_vm_networking: port'
-            new_vm_networking_port = new_vm_networking['port']
-            assert isinstance(new_vm_networking_port, int)
+            assert isinstance(new_vm_networking['port'], int)
 
         except (KeyError, AssertionError) as e:
             raise ConfigurationError(f"Input File is missing a required key {key}")
+
+
+if __name__ == "__main__":
+    vm_deployer = VMDeployer()
+    vm_deployer.deploy()

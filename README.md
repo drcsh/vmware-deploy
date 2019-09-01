@@ -1,8 +1,17 @@
-# vmware-deploy
+# vmware-deploy (WIP)
 Script for deploying a VM from a template using VMWare pyvmomi connected to VMWare vSphere. 
 
 The deployed VM will have the specs assigned to it, will be set up to RDP or SSH to it, and have a randomized Admin 
 password (spat out by the script).
+
+## TODO:
+
+1. ~~block out basic structure~~
+2. ~~vsphere connectivity~~
+3. ~~template cloning~~
+4. ~~vm configuration~~
+5. console connection to the guest OS
+6. guest OS configuration
 
 ## Supports
 1. Windows 2012, 2016 and CentOS 7 deploys

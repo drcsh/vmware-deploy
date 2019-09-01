@@ -3,6 +3,7 @@ INPUT = {
     'template_admin_account': {'username': 'Administrator', 'password': 'pass123'},
     'template_os': 'windows',
     'target_vm_host': 'hostname',
+    'target_datastore': 'hostname_local',
     'target_vm_folder': 'foldername',
     'vm_network': 'network123',
     'new_vm_name': 'new_vm',

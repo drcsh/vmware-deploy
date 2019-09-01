@@ -6,7 +6,6 @@ from pyVim import connect
 from pyVmomi import vim, vmodl
 
 from vmware.exceptions import VMWareObjectNotFound, VMWareBadState, VMWareTimeout
-from vmware.vm import VM
 
 
 class VSphere:
@@ -18,6 +17,8 @@ class VSphere:
         self.uri = uri
         self._username = username
         self._password = password
+        self._service_instance = None
+        self.vmw_objs = {}
 
     def _connect(self):
         """
@@ -180,9 +181,11 @@ class VSphere:
 
     def get_vmw_obj_by_name(self, vimtype, name):
         """
-        Get the vsphere object associated with a given text name.
+        Get the vsphere object associated with a given text name. If we already have a copy in self.vmw_objects,
+        we return that. Otherwise we go looking for it.
 
-        :note: Pretty sure the logic here came from the community samples, but I can't find the original source.
+        :note: Pretty sure the container view search logic here came from the community samples, but I can't find the
+        original source.
 
         :param vim.ServiceInstance si: VMWare Service Instance
         :param vim.XXXX vimtype: vim class of the object to retreive. E.g. vim.VirtualMachine
@@ -190,14 +193,22 @@ class VSphere:
         :return object:
         :rtype vim.ManagedObject|False: Returns the vim ManagedObject or False if it doesn't exist.
         """
-        service_instance = self._get_service_instance()
 
-        view = service_instance.get_container_view(obj_type=[vimtype])
-        vm_data = self.collect_properties(view_ref=view, obj_type=vimtype, include_mors=True)
+        vmw_obj = self.vmw_objs.get(name)
+        if vmw_obj:
+            if type(vimtype, vmw_obj):
+                return vmw_obj
+            else:
+                raise TypeError(f"Requested vmw object of type {vimtype}, got {vmw_obj}")
+
+        view = self.get_container_view(obj_type=[vimtype])
+        vm_data = self._collect_properties(view_ref=view, obj_type=vimtype, include_mors=True)
 
         for vm in vm_data:
             if vm["name"] == name:
-                return vm["obj"]
+                vmw_obj = vm["obj"]
+                self.vmw_objs[name] = vmw_obj
+                return vmw_obj
 
         raise VMWareObjectNotFound(f"Could not find {vimtype} with name {name}!")
 
@@ -208,7 +219,7 @@ class VSphere:
                       target_folder_name,
                       new_vm_name):
         """
-        Given the name of the template (VM Template or VM) to clone, the name of the host and the datastore on that
+        Given a vim.VM to clone, the name of the host and the datastore on that
         host, as well as the VM Folder to put it into and the name to assign it, this function asks vSphere for
         these objects and builds a clonespec which is then run to create the VM.
 
@@ -224,7 +235,7 @@ class VSphere:
 
         print(f" VSphere: Getting ready to clone VM {template_name}")
 
-        vm_template = VM.get_vm_by_name(self, template_name)
+        vmw_vm_template = self.get_vmw_obj_by_name(vim.VirtualMachine, template_name)
 
         print(f" VSphere: Looking for VM Host {target_host_name}")
         vmw_host = self.get_vmw_obj_by_name(vim.HostSystem, target_host_name)
@@ -253,7 +264,7 @@ class VSphere:
 
         print(f" VSphere: Cloning {new_vm_name} to {vmw_folder} on {vmw_host}. This will take some time...")
         try:
-            task = vm_template.Clone(folder=vmw_folder, name=new_vm_name, spec=clonespec)
+            task = vmw_vm_template.Clone(folder=vmw_folder, name=new_vm_name, spec=clonespec)
         except vim.fault.NoPermission as e:
             raise VMWareBadState(f"Permissions Error: Not allowed to clone VM template! Err: {str(e)}")
 
@@ -280,8 +291,7 @@ class VSphere:
         requested_memory = int(hardware_specs['memory'])
         requested_hdd = int(hardware_specs['hdd'])
 
-        vm = VM.get_vm_by_name(self, vm_name)
-        vmw_vm = vm.vmware_vm_obj
+        vmw_vm = self.get_vmw_obj_by_name(vim.VirtualMachine, vm_name)
 
         print(f" VSphere: Looking for VMware Network {vm_network_name}")
         vmw_network = self.get_vmw_obj_by_name(vim.Network, vm_network_name)
