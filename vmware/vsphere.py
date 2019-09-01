@@ -6,7 +6,7 @@ from pyVim import connect
 from pyVmomi import vim, vmodl
 
 from vmware.exceptions import VMWareObjectNotFound, VMWareBadState, VMWareTimeout
-
+from vmware import power_functions, task_functions
 
 class VSphere:
     """
@@ -128,32 +128,6 @@ class VSphere:
             data.append(properties)
         return data
 
-    def _wait_for_task_complete(self, task, timeout_seconds=None):
-        """
-        Helper function, when we've triggered a VMWare task and need to sit and wait for it to be done.
-
-        Optionally takes a maximum amount of time to wait. Default is no timeout.
-
-        :note: With no timeout set this may never end.
-
-        :param task:
-        :param int timeout_seconds: (optional) the maximum number of seconds to wait before deciding it's a lost cause
-        :return: whether the task was successful
-        :rtype bool:
-        """
-        seconds_waited = 0
-        while task.info.state not in [vim.TaskInfo.State.success, vim.TaskInfo.State.error]:
-            print(f" VSphere: Waiting for {task} to complete.")
-            time.sleep(10)
-            seconds_waited += 10
-            if timeout_seconds and timeout_seconds < seconds_waited:
-                raise VMWareTimeout(f"Waited {seconds_waited} seconds for {task} to complete and it didn't!")
-
-        if task.info.state == vim.TaskInfo.State.success:
-            return True
-
-        return False
-
     def get_container_view(self, obj_type, container=None):
         """
         Get a vSphere Container View reference to all objects of type 'obj_type'
@@ -179,28 +153,18 @@ class VSphere:
         )
         return view_ref
 
-    def get_vmw_obj_by_name(self, vimtype, name):
+    def load_vmw_obj_by_name(self, vimtype, name):
         """
-        Get the vsphere object associated with a given text name. If we already have a copy in self.vmw_objects,
-        we return that. Otherwise we go looking for it.
+        Searches vCenter for an object of the given type and name and loads it into self.vmw_objs
 
-        :note: Pretty sure the container view search logic here came from the community samples, but I can't find the
-        original source.
+        Note that this is not a fast operation and should be avoided if possible.
 
-        :param vim.ServiceInstance si: VMWare Service Instance
-        :param vim.XXXX vimtype: vim class of the object to retreive. E.g. vim.VirtualMachine
-        :param string name: Plain text name we're looking for.
-        :return object:
-        :rtype vim.ManagedObject|False: Returns the vim ManagedObject or False if it doesn't exist.
+        :param class vimtype:
+        :param str name:
+        :return:
+        :rtype vim.ManagedObject: Return a vmware object of the given vimtype
+        :raises VMWareObjectNotFound: No object of that name + type in VMWare.
         """
-
-        vmw_obj = self.vmw_objs.get(name)
-        if vmw_obj:
-            if type(vimtype, vmw_obj):
-                return vmw_obj
-            else:
-                raise TypeError(f"Requested vmw object of type {vimtype}, got {vmw_obj}")
-
         view = self.get_container_view(obj_type=[vimtype])
         vm_data = self._collect_properties(view_ref=view, obj_type=vimtype, include_mors=True)
 
@@ -211,6 +175,32 @@ class VSphere:
                 return vmw_obj
 
         raise VMWareObjectNotFound(f"Could not find {vimtype} with name {name}!")
+
+    def get_vmw_obj_by_name(self, vimtype, name):
+        """
+        Get the vsphere object associated with a given text name. If we already have a copy in self.vmw_objects,
+        we return that. Otherwise we go looking for it.
+
+        :note: Pretty sure the container view search logic here came from the community samples, but I can't find the
+        original source.
+
+        :param vim.ServiceInstance v_sphere: VMWare Service Instance
+        :param class vimtype: vim.XXXX vim class of the object to retreive. E.g. vim.VirtualMachine
+        :param str name: Plain text name we're looking for.
+        :return object:
+        :rtype vim.ManagedObject: Managed object, specifically of vimtype
+        :raises VMWareObjectNotFound: No object of that name + type in VMWare.
+        """
+
+        vmw_obj = self.vmw_objs.get(name)
+        if vmw_obj:
+            if type(vimtype, vmw_obj):
+                return vmw_obj
+            else:
+                raise TypeError(f"Requested vmw object of type {vimtype}, got {vmw_obj}")
+
+        else:
+            return self.load_vmw_obj_by_name(vimtype, name)
 
     def clone_machine(self,
                       template_name,
@@ -268,7 +258,7 @@ class VSphere:
         except vim.fault.NoPermission as e:
             raise VMWareBadState(f"Permissions Error: Not allowed to clone VM template! Err: {str(e)}")
 
-        result = self._wait_for_task_complete(task)
+        result = task_functions.wait_for_task_complete(task)
         if not result:
             raise VMWareBadState(f"VMWare failed to clone the VM! Check the vSphere logs.")
 
@@ -359,9 +349,20 @@ class VSphere:
 
         task = vmw_vm.ReconfigVM_Task(spec=new_spec)
 
-        success = self._wait_for_task_complete(task, timeout_seconds=60)
+        success = task_functions.wait_for_task_complete(task, timeout_seconds=60)
 
         if not success:
             raise VMWareBadState("VMWare failed to reconfigure the VM! Check the vSphere logs.")
 
         print(f" VSphere: VM {vm_name} should now have the correct hardware specs")
+
+    def power_on_vm_and_wait_for_os(self, vm_name):
+        """
+        Given a VM name, finds the VM and switches it on. Returns when the OS is responding.
+
+        :param str vm_name:
+        :return:
+        """
+
+        vmw_vm = self.get_vmw_obj_by_name(vim.VirtualMachine, vm_name)
+        power_functions.power_on_vm_and_wait_for_os(self, vmw_vm)

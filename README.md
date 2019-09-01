@@ -7,15 +7,16 @@ password (spat out by the script).
 ## TODO:
 
 1. ~~block out basic structure~~
-2. ~~vsphere connectivity~~
-3. ~~template cloning~~
-4. ~~vm configuration~~
-5. console connection to the guest OS
-6. guest OS configuration
+1. ~~vsphere connectivity~~
+1. ~~template cloning~~
+1. ~~vm configuration~~
+1. ~~vm power on~~
+1. console connection to the guest OS
+1. guest OS configuration
 
 ## Supports
 1. Windows 2012, 2016 and CentOS 7 deploys
-2. VMWare vSphere 6.5
+1. VMWare vSphere 6.5
 
 # Requirements
 

@@ -58,6 +58,8 @@ class VMDeployer(object):
 
         print("VM Reconfigured. Booting VM for the first time.")
 
+        v_sphere.power_on_vm_and_wait_for_os(self.inputs['new_vm_name'])
+
         print("VM Booted. Passing to OS Preparation.")
 
         print("Completed!")

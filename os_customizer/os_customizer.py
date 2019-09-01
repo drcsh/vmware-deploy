@@ -18,15 +18,3 @@ class OSCustomizer:
         # stub, implemented by child classes
         raise NotImplementedError()
 
-
-class WindowsCustomizer(OSCustomizer):
-
-    def customize(self):
-        pass
-
-
-class CentOSCustomizer(OSCustomizer):
-
-    def customize(self):
-        pass
-
