@@ -6,18 +6,21 @@ from pyVim import connect
 from pyVmomi import vim, vmodl
 
 from vmware.exceptions import VMWareObjectNotFound, VMWareBadState, VMWareTimeout
-from vmware import power_functions, task_functions
+from vmware import power_functions, task_functions, search_functions
+
 
 class VSphere:
     """
         Wrapper class for talking to VMWare vSphere
     """
 
-    def __init__(self, uri, username, password):
+    def __init__(self, uri, username, password, port=443):
         self.uri = uri
+        self.port = port
         self._username = username
         self._password = password
         self._service_instance = None
+        self._process_manager = None
         self.vmw_objs = {}
 
     def _connect(self):
@@ -35,7 +38,7 @@ class VSphere:
         service_instance = connect.SmartConnect(host=self.uri,
                                                 user=self._username,
                                                 pwd=self._password,
-                                                port=443,
+                                                port=self.port,
                                                 sslContext=context)
 
         atexit.register(print, f" VSphere: Disconnecting from vSphere")
@@ -43,7 +46,7 @@ class VSphere:
 
         return service_instance
 
-    def _get_service_instance(self, force_refresh=False):
+    def get_service_instance(self, force_refresh=False):
         """
         Fetch the vmware service instance for interacting with the SOAP API. If there isn't one, gets one.
 
@@ -59,99 +62,19 @@ class VSphere:
 
         return self._service_instance
 
-    def _collect_properties(self, view_ref, obj_type, path_set=None, include_mors=False):
+    def get_process_manager(self, force_refresh=False):
         """
-        Collect properties for managed objects from a view ref
+        Returns the VMWare processManager, used for running processes inside guest OSs.
 
-        Check the vSphere API documentation for example on retrieving
-        object properties:
-
-            - http://goo.gl/erbFDz
-
-
-        ORIGINAL SOURCE: Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
-        Modified for my purposes here.
-
-        :param pyVmomi.vim.view.* view_ref: Starting point of inventory navigation
-        :param pyVmomi.vim.* obj_type: Type of managed object
-        :param list path_set: List of properties to retrieve
-        :param bool include_mors: If True include the managed objects refs in the result
-
-        :return: A list of properties for the managed objects
-        :rtype list:
+        :param bool force_refresh: (optional) if set to True, will get a new processManager and service instance.
+        :return:
         """
-        service_instance = self._get_service_instance()
 
-        collector = service_instance.content.propertyCollector
+        if not self._process_manager or force_refresh:
+            service_instance = self.get_service_instance(force_refresh)
+            self._process_manager = service_instance.vmw_content.guestOperationsManager.processManager
 
-        # Create object specification to define the starting point of
-        # inventory navigation
-        obj_spec = vmodl.query.PropertyCollector.ObjectSpec()
-        obj_spec.obj = view_ref
-        obj_spec.skip = True
-
-        # Create a traversal specification to identify the path for collection
-        traversal_spec = vmodl.query.PropertyCollector.TraversalSpec()
-        traversal_spec.name = 'traverseEntities'
-        traversal_spec.path = 'view'
-        traversal_spec.skip = False
-        traversal_spec.type = view_ref.__class__
-        obj_spec.selectSet = [traversal_spec]
-
-        # Identify the properties to the retrieved
-        property_spec = vmodl.query.PropertyCollector.PropertySpec()
-        property_spec.type = obj_type
-
-        if not path_set:
-            property_spec.all = True
-
-        property_spec.pathSet = path_set
-
-        # Add the object and property specification to the
-        # property filter specification
-        filter_spec = vmodl.query.PropertyCollector.FilterSpec()
-        filter_spec.objectSet = [obj_spec]
-        filter_spec.propSet = [property_spec]
-
-        # Retrieve properties
-        props = collector.RetrieveContents([filter_spec])
-
-        data = []
-        for obj in props:
-            properties = {}
-            for prop in obj.propSet:
-                properties[prop.name] = prop.val
-
-            if include_mors:
-                properties['obj'] = obj.obj
-
-            data.append(properties)
-        return data
-
-    def get_container_view(self, obj_type, container=None):
-        """
-        Get a vSphere Container View reference to all objects of type 'obj_type'
-
-        It is up to the caller to take care of destroying the View when no longer needed.
-
-        ORIGINAL SOURCE: Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
-        Modified for my purposes here.
-
-        :param list obj_type: A list of managed object types
-        :return: A container view ref to the discovered managed objects
-        :rtype: ContainerView
-        """
-        service_instance = self._get_service_instance()
-
-        if not container:
-            container = service_instance.content.rootFolder
-
-        view_ref = service_instance.content.viewManager.CreateContainerView(
-            container=container,
-            type=obj_type,
-            recursive=True
-        )
-        return view_ref
+        return self._process_manager
 
     def load_vmw_obj_by_name(self, vimtype, name):
         """
@@ -165,12 +88,11 @@ class VSphere:
         :rtype vim.ManagedObject: Return a vmware object of the given vimtype
         :raises VMWareObjectNotFound: No object of that name + type in VMWare.
         """
-        view = self.get_container_view(obj_type=[vimtype])
-        vm_data = self._collect_properties(view_ref=view, obj_type=vimtype, include_mors=True)
+        vmw_data = search_functions.get_vmw_objects_of_type(self.get_service_instance(), vimtype)
 
-        for vm in vm_data:
-            if vm["name"] == name:
-                vmw_obj = vm["obj"]
+        for result in vmw_data:
+            if result["name"] == name:
+                vmw_obj = result["obj"]
                 self.vmw_objs[name] = vmw_obj
                 return vmw_obj
 
@@ -269,7 +191,7 @@ class VSphere:
         Reconfigures a VM (given by VM Name) to have the hardware specs provided and be connected to the VMNetwork
         specified.
 
-        TODO: Split into separate methods, but finding the VM by name is expensive. Maybe move to VM?
+        TODO: Split into separate methods
 
         :param str vm_name:
         :param str vm_network_name:

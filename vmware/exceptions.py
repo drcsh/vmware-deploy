@@ -12,8 +12,16 @@ class VMWareBadState(Exception):
     """
     pass
 
+
 class VMWareTimeout(Exception):
     """
     Something took too long to complete VMWare side.
+    """
+    pass
+
+
+class VMWareGuestOSException(Exception):
+    """
+    Something went wrong when we were talking to the GuestOS
     """
     pass

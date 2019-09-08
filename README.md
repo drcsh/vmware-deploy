@@ -11,7 +11,7 @@ password (spat out by the script).
 1. ~~template cloning~~
 1. ~~vm configuration~~
 1. ~~vm power on~~
-1. console connection to the guest OS
+1. console connection to the guest OS (WIP) 
 1. guest OS configuration
 
 ## Supports
