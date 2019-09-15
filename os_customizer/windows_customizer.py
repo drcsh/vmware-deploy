@@ -10,4 +10,19 @@ class WindowsCustomizer(OSCustomizer):
     """
 
     def customize(self):
-        pass
+
+        powershell_path = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        cmd_path = "C:\\Windows\\System32\\cmd.exe"
+        cscript_path = "C:\\Windows\\System32\\cscript.exe"
+
+        first_command_list = [
+            {  # (note: it is limited to 15 chars)
+                'desc': 'Rename VM',
+                'path': powershell_path,
+                'cmd': '-c \"Rename-Computer {}\"'.format(self.vm_name[:15]),
+                'output_redirect': True,
+                'output_file': 'C:\\set_vm_name.log',
+                'success_msg': '',
+                'required_success': False,
+            },
+        ]

@@ -7,6 +7,7 @@ from pyVmomi import vim, vmodl
 
 from vmware.exceptions import VMWareObjectNotFound, VMWareBadState, VMWareTimeout
 from vmware import power_functions, task_functions, search_functions
+from vmware.guest_os_interface import GuestOSInterface
 
 
 class VSphere:
@@ -21,6 +22,7 @@ class VSphere:
         self._password = password
         self._service_instance = None
         self._process_manager = None
+        self._file_manager = None
         self.vmw_objs = {}
 
     def _connect(self):
@@ -76,6 +78,20 @@ class VSphere:
 
         return self._process_manager
 
+    def get_file_manager(self, force_refresh=False):
+        """
+        Returns the VMWare fileManager, used for performing file operations on a VM, such as fetching files from the
+        guest OS.
+
+        :param force_refresh:
+        :return:
+        """
+        if not self._file_manager or force_refresh:
+            service_instance = self.get_service_instance(force_refresh)
+            self._file_manager = service_instance.vmw_content.guestOperationsManager.fileManager
+
+        return self._file_manager
+
     def load_vmw_obj_by_name(self, vimtype, name):
         """
         Searches vCenter for an object of the given type and name and loads it into self.vmw_objs
@@ -123,6 +139,18 @@ class VSphere:
 
         else:
             return self.load_vmw_obj_by_name(vimtype, name)
+
+    def get_guestosinterface_for_vm(self, vm_name, os_username, os_password):
+        """
+        Get a GuestOSInterface (for communicating with the guest OS) for a virtual machine. 
+        
+        :param str vm_name: Name of the VM
+        :param str os_username: username to log in to the guest OS
+        :param str os_password: password for the guest OS user
+        :return:
+        :rtype: GuestOSInterface
+        """
+        return GuestOSInterface(self, vm_name, os_username, os_password)
 
     def clone_machine(self,
                       template_name,

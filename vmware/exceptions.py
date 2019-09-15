@@ -25,3 +25,33 @@ class VMWareGuestOSException(Exception):
     Something went wrong when we were talking to the GuestOS
     """
     pass
+
+
+class VMWareGuestOSTimeoutException(Exception):
+    """
+    The GuestOS didn't respond in a timely manner
+    """
+    pass
+
+
+class VMWareGuestOSProcessUnknownException(Exception):
+    """
+    Something went wrong when we ran a process on the guest OS, but we can't tell what happened.
+    """
+    pass
+
+
+class VMWareGuestOSProcessAmbiguousResultException(Exception):
+    """
+    A process run in the OS produced an ambiguous result - i.e. it produced no output, and this can be expected
+    behaviour. Equally however, this could indicate a silent failure
+    """
+    pass
+
+
+class VMWareGuestOSProcessBadOutputException(Exception):
+    """
+    A process run in the guest OS did not exit successfully and produced a result that we did not expect. This suggests
+    an error occurred.
+    """
+    pass

@@ -22,7 +22,7 @@ def get_container_view(service_instance, obj_type, container=None):
 
     It is up to the caller to take care of destroying the View when no longer needed.
 
-    ORIGINAL SOURCE: Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
+    Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
     Modified for my purposes here.
 
     :param list obj_type: A list of managed object types
@@ -51,7 +51,7 @@ def collect_properties(service_instance, view_ref, obj_type, path_set=None, incl
         - http://goo.gl/erbFDz
 
 
-    ORIGINAL SOURCE: Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
+    Original Source: https://github.com/dnaeon/py-vconnector/blob/master/src/vconnector/core.py
     Modified for my purposes here.
 
     :param pyVmomi.vim.view.* view_ref: Starting point of inventory navigation
