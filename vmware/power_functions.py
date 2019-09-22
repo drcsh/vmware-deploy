@@ -53,7 +53,7 @@ def wait_for_vmware_tools_response(v_sphere, vmw_vm):
         if wait_count > 24:
             # If we've already done this 10 times, give up
             if refreshes >= 10:
-                msg = "  !! Reboot command issued but VMWare Tools did not come up within 20 minutes! Help!"
+                msg = "  !! Reboot program_command issued but VMWare Tools did not come up within 20 minutes! Help!"
                 print(msg)
                 raise VMWareTimeout(msg)
 

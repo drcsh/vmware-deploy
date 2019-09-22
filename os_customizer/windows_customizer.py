@@ -1,4 +1,5 @@
 from os_customizer.os_customizer import OSCustomizer
+from vmware.guest_os_interface import GuestOSCommand
 
 
 class WindowsCustomizer(OSCustomizer):
@@ -15,14 +16,16 @@ class WindowsCustomizer(OSCustomizer):
         cmd_path = "C:\\Windows\\System32\\cmd.exe"
         cscript_path = "C:\\Windows\\System32\\cscript.exe"
 
+        rename_computer = {
+            'command': GuestOSCommand(
+                program_path=powershell_path,
+                program_command=f'-c \"Rename-Computer {self.vm_name[:15]}\"',
+                description='Rename VM',
+            ),
+            'success_required': False,
+        }
+        
+
         first_command_list = [
-            {  # (note: it is limited to 15 chars)
-                'desc': 'Rename VM',
-                'path': powershell_path,
-                'cmd': '-c \"Rename-Computer {}\"'.format(self.vm_name[:15]),
-                'output_redirect': True,
-                'output_file': 'C:\\set_vm_name.log',
-                'success_msg': '',
-                'required_success': False,
-            },
+            rename_computer,
         ]
