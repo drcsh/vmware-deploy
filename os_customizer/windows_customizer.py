@@ -24,7 +24,7 @@ class WindowsCustomizer(OSCustomizer):
             ),
             'success_required': False,
         }
-        
+
 
         first_command_list = [
             rename_computer,

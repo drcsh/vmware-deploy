@@ -71,7 +71,7 @@ def collect_properties(service_instance, view_ref, obj_type, path_set=None, incl
     obj_spec.obj = view_ref
     obj_spec.skip = True
 
-    # Create a traversal specification to identify the program_path for collection
+    # Create a traversal specification to identify the path for collection
     traversal_spec = vmodl.query.PropertyCollector.TraversalSpec()
     traversal_spec.name = 'traverseEntities'
     traversal_spec.path = 'view'
