@@ -25,7 +25,7 @@ class WindowsCustomizer(OSCustomizer):
         new_net_adapter_name = "virtnet"
 
         # Windows has a funny idea of MAC addresses
-        windows_network_device_mac = self.config.network_device_mac.upper().replace(":", "-")
+        windows_network_device_mac = self.spec.network_device_mac.upper().replace(":", "-")
 
         '''
             Command defs
